@@ -62,6 +62,6 @@ app.get("/posts/:postName", function(req, res){
 
 
 // Starting the port on 3000
-app.listen(3000, function() {
+app.listen(4000, function() {
   console.log("Server started on port 3000");
 });
