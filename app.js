@@ -1,8 +1,10 @@
 //jshint esversion:6
-
+const dotenv = require("dotenv").config();
 const _ = require("lodash");
 const express = require("express");
 const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+
 const ejs = require("ejs");
 
 const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
@@ -10,18 +12,48 @@ const aboutContent = "Hac habitasse platea dictumst vestibulum rhoncus est pelle
 const contactContent = "Scelerisque eleifend donec pretium vulputate sapien. Rhoncus urna neque viverra justo nec ultrices. Arcu dui vivamus arcu felis bibendum. Consectetur adipiscing elit duis tristique. Risus viverra adipiscing at in tellus integer feugiat. Sapien nec sagittis aliquam malesuada bibendum arcu vitae. Consequat interdum varius sit amet mattis. Iaculis nunc sed augue lacus. Interdum posuere lorem ipsum dolor sit amet consectetur adipiscing elit. Pulvinar elementum integer enim neque. Ultrices gravida dictum fusce ut placerat orci nulla. Mauris in aliquam sem fringilla ut morbi tincidunt. Tortor posuere ac ut consequat semper viverra nam libero.";
 
 const app = express();
-const posts = [];
 
 // Staring app with ejs engine.
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
+// db connections
+mongoose.set("strictQuery", false);
+var username = process.env.db_admin;
+var password = process.env.PASSWORD;
+const db_url = "mongodb+srv://"+username+":"+password+"@cluster0.vgslnjp.mongodb.net/Web-Blog";
+
+// connecting to MongoDB locally if you wanna test just install your Mongodb shell and uncomment this and commect the Atlas one.
+// mongoose.connect("mongodb://0.0.0.0:27017/blogDB");
+
+// connecting to MongoDB from Atlas
+mongoose.connect(db_url);
+
+
+// Schema and model
+
+const postSchema = {
+  title : String,
+  content : String
+};
+
+const Post = new mongoose.model("Post", postSchema);
+
+
 // Home 
 app.get("/", function(req, res){
-    
-    res.render("home",{intro: homeStartingContent, blogPosts : posts});
+  Post.find({}, function(err, posts){
+    if(err){
+      console.log(err);
+    }else {
+      // console.log(posts); 
+      res.render("home",{intro: homeStartingContent, blogPosts : posts});
+    }
+  });
 });
+
+
 
 // About 
 app.get("/about", function(req, res){
@@ -40,24 +72,27 @@ app.get("/compose", function(req, res){
 
 // Compose the post into the Compose page. 
 app.post("/compose", function(req, res){
-  const post = {
+  const post = new Post({
     title: req.body.title,
     content : req.body.blogPost
-  };
-  posts.push(post);
-  res.redirect("/");
+  });
+  post.save(function(err){
+    if(!err){
+      res.redirect("/");
+    }
+  });
 });
 
 // Render the content on Post page and searching post!
-app.get("/posts/:postName", function(req, res){
-  var topicName = _.lowerCase(req.params.postName);
-  posts.forEach(function(post){
-    const storTitle = _.lowerCase(post.title); 
-    if(topicName === storTitle){
-      res.render("post", {blogTitle : post.title, blogContent : post.content})
+app.get("/posts/:postId", function(req, res){
+  const postId = req.params.postId;
+  Post.findOne({_id : postId}, function(err, post){
+    if(!err){
+      res.render("post",{blogTitle:post.title, blogContent :post.content})
+    } else {
+      console.log(err);
     }
-
-  });  
+  });
 });
 
 
